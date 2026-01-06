@@ -1,5 +1,6 @@
 // ============================================
 // MINIMALIST BLOG - Vanilla JS SPA
+// Dual-Mode: API (VPS) + LocalStorage (Static Hosting)
 // ============================================
 
 const API_BASE = '/api';
@@ -10,14 +11,167 @@ const state = {
     token: localStorage.getItem('blog-token') || null,
     theme: localStorage.getItem('blog-theme') || 'light',
     posts: [],
-    currentPost: null
+    currentPost: null,
+    isOfflineMode: false // Will be set on init
 };
 
 const themes = ['light', 'dark', 'rose', 'ocean', 'forest'];
 const themeLabels = { light: 'Aydınlık', dark: 'Karanlık', rose: 'Gül', ocean: 'Okyanus', forest: 'Orman' };
 
+// ============ Offline Storage Keys ============
+const STORAGE_KEYS = {
+    posts: 'blog-offline-posts',
+    users: 'blog-offline-users',
+    postIdCounter: 'blog-offline-post-id',
+    userIdCounter: 'blog-offline-user-id'
+};
+
+// ============ Demo Data for Offline Mode ============
+const DEMO_POSTS = [
+    {
+        id: 1,
+        title: 'Modern Frontend Mimarisi',
+        slug: 'modern-frontend-mimarisi',
+        excerpt: 'Component-based architecture ve state management stratejileri üzerine derinlemesine bir bakış.',
+        content: '<h2>Giriş</h2><p>Modern frontend geliştirme, son yıllarda büyük bir evrim geçirdi. Artık sadece HTML, CSS ve JavaScript yazmakla kalmıyor, aynı zamanda karmaşık state yönetimi, component mimarisi ve performans optimizasyonu gibi konularla da ilgileniyoruz.</p><h2>Component-Based Architecture</h2><p>React, Vue ve Svelte gibi frameworkler, UI\'ı yeniden kullanılabilir componentlere ayırmamızı sağlar. Bu yaklaşım:</p><ul><li>Kod tekrarını azaltır</li><li>Test edilebilirliği artırır</li><li>Bakımı kolaylaştırır</li></ul><p>Her component kendi state\'ini ve lifecycle\'ını yönetir, bu da büyük uygulamaları daha yönetilebilir hale getirir.</p>',
+        tags: [{ id: 1, name: 'Frontend' }, { id: 2, name: 'Mimari' }],
+        author: { id: 1, name: 'Demo Yazar', email: 'demo@blog.com' },
+        author_id: 1,
+        featured: true,
+        read_time: '5 dk',
+        created_at: new Date(Date.now() - 86400000 * 2).toISOString()
+    },
+    {
+        id: 2,
+        title: 'CSS Grid vs Flexbox',
+        slug: 'css-grid-vs-flexbox',
+        excerpt: 'İki güçlü layout sisteminin karşılaştırması ve ne zaman hangisini kullanmalıyız.',
+        content: '<h2>Flexbox</h2><p>Flexbox, tek boyutlu layoutlar için mükemmeldir. Bir satır veya sütun boyunca öğeleri hizalamak istediğinizde Flexbox\'ı tercih edin.</p><h2>CSS Grid</h2><p>Grid, iki boyutlu layoutlar için tasarlanmıştır. Hem satır hem de sütunları aynı anda kontrol etmeniz gerektiğinde Grid kullanın.</p><h2>Hangisini Seçmeli?</h2><p><strong>Flexbox kullanın:</strong> Navigation barlar, card listeleri, form elemanları hizalama</p><p><strong>Grid kullanın:</strong> Sayfa layoutları, dashboard\'lar, galeri gridleri</p>',
+        tags: [{ id: 3, name: 'CSS' }, { id: 4, name: 'Layout' }],
+        author: { id: 1, name: 'Demo Yazar', email: 'demo@blog.com' },
+        author_id: 1,
+        featured: false,
+        read_time: '4 dk',
+        created_at: new Date(Date.now() - 86400000 * 5).toISOString()
+    },
+    {
+        id: 3,
+        title: 'JavaScript Performance İpuçları',
+        slug: 'javascript-performance-ipuclari',
+        excerpt: 'Web uygulamalarınızı hızlandırmak için pratik JavaScript optimizasyon teknikleri.',
+        content: '<h2>1. Debounce ve Throttle</h2><p>Scroll, resize veya input eventlerinde gereksiz fonksiyon çağrılarını önlemek için debounce ve throttle kullanın.</p><h2>2. Virtual DOM Kullanımı</h2><p>React gibi kütüphaneler Virtual DOM kullanarak gerçek DOM manipülasyonlarını minimize eder.</p><h2>3. Lazy Loading</h2><p>Görüntüler ve componentler için lazy loading uygulayarak initial load süresini azaltın.</p><h2>4. Memoization</h2><p>Pahalı hesaplamaları cache\'leyerek tekrar tekrar çalıştırmaktan kaçının.</p>',
+        tags: [{ id: 5, name: 'JavaScript' }, { id: 6, name: 'Performance' }],
+        author: { id: 1, name: 'Demo Yazar', email: 'demo@blog.com' },
+        author_id: 1,
+        featured: false,
+        read_time: '6 dk',
+        created_at: new Date(Date.now() - 86400000 * 10).toISOString()
+    },
+    {
+        id: 4,
+        title: 'Minimalist UI Tasarım Prensipleri',
+        slug: 'minimalist-ui-tasarim-prensipleri',
+        excerpt: 'Az çoktur: Etkili ve kullanıcı dostu arayüzler tasarlamanın temel ilkeleri.',
+        content: '<h2>Whitespace Kullanımı</h2><p>Boşluk, tasarımın nefes almasını sağlar. Elementler arasında yeterli boşluk bırakmak, kullanıcının odaklanmasını kolaylaştırır.</p><h2>Tipografi Hiyerarşisi</h2><p>Başlıklar, alt başlıklar ve gövde metni arasında net bir hiyerarşi oluşturun. Bu, içeriğin taranabilirliğini artırır.</p><h2>Renk Paleti</h2><p>2-3 ana renk ile sınırlı kalın. Accent rengi dikkat çekmek istediğiniz elementler için kullanın.</p><h2>Tutarlılık</h2><p>Butonlar, inputlar ve diğer UI elementleri tüm uygulama boyunca tutarlı olmalıdır.</p>',
+        tags: [{ id: 7, name: 'UI/UX' }, { id: 8, name: 'Tasarım' }],
+        author: { id: 1, name: 'Demo Yazar', email: 'demo@blog.com' },
+        author_id: 1,
+        featured: false,
+        read_time: '3 dk',
+        created_at: new Date(Date.now() - 86400000 * 15).toISOString()
+    }
+];
+
+const DEMO_USER = {
+    id: 1,
+    name: 'Demo Yazar',
+    email: 'demo@blog.com',
+    password: 'demo123',
+    provider: 'email',
+    createdAt: new Date(Date.now() - 86400000 * 30).toISOString()
+};
+
+// ============ Offline Storage Helpers ============
+function initOfflineStorage() {
+    if (!localStorage.getItem(STORAGE_KEYS.posts)) {
+        localStorage.setItem(STORAGE_KEYS.posts, JSON.stringify(DEMO_POSTS));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.users)) {
+        localStorage.setItem(STORAGE_KEYS.users, JSON.stringify([DEMO_USER]));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.postIdCounter)) {
+        localStorage.setItem(STORAGE_KEYS.postIdCounter, '5');
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.userIdCounter)) {
+        localStorage.setItem(STORAGE_KEYS.userIdCounter, '2');
+    }
+}
+
+function getOfflinePosts() {
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.posts) || '[]');
+}
+
+function saveOfflinePosts(posts) {
+    localStorage.setItem(STORAGE_KEYS.posts, JSON.stringify(posts));
+}
+
+function getOfflineUsers() {
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.users) || '[]');
+}
+
+function saveOfflineUsers(users) {
+    localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
+}
+
+function getNextPostId() {
+    const id = parseInt(localStorage.getItem(STORAGE_KEYS.postIdCounter) || '1');
+    localStorage.setItem(STORAGE_KEYS.postIdCounter, String(id + 1));
+    return id;
+}
+
+function getNextUserId() {
+    const id = parseInt(localStorage.getItem(STORAGE_KEYS.userIdCounter) || '1');
+    localStorage.setItem(STORAGE_KEYS.userIdCounter, String(id + 1));
+    return id;
+}
+
+function generateSlug(title) {
+    return title
+        .toLowerCase()
+        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
+function generateFakeToken(userId) {
+    return 'offline_' + btoa(JSON.stringify({ sub: String(userId), exp: Date.now() + 86400000 }));
+}
+
+// ============ Backend Detection ============
+async function checkBackendAvailable() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        
+        const res = await fetch(`${API_BASE}/health`, { 
+            signal: controller.signal,
+            method: 'GET'
+        });
+        clearTimeout(timeoutId);
+        return res.ok;
+    } catch (e) {
+        return false;
+    }
+}
+
 // ============ API Helpers ============
 async function api(endpoint, options = {}) {
+    // If offline mode, use localStorage
+    if (state.isOfflineMode) {
+        return offlineApi(endpoint, options);
+    }
+    
     const headers = { 'Content-Type': 'application/json', ...options.headers };
     if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
     
@@ -33,6 +187,139 @@ async function api(endpoint, options = {}) {
         throw new Error(data?.detail || 'Bir hata oluştu');
     }
     return data;
+}
+
+// ============ Offline API Simulation ============
+async function offlineApi(endpoint, options = {}) {
+    const method = options.method || 'GET';
+    const body = options.body ? JSON.parse(options.body) : null;
+    
+    // Simulate network delay
+    await new Promise(r => setTimeout(r, 100));
+    
+    // AUTH ENDPOINTS
+    if (endpoint === '/auth/login' && method === 'POST') {
+        const users = getOfflineUsers();
+        const user = users.find(u => u.email === body.email && u.password === body.password);
+        if (!user) throw new Error('Email veya şifre hatalı');
+        const { password, ...safeUser } = user;
+        return { access_token: generateFakeToken(user.id), user: safeUser };
+    }
+    
+    if (endpoint === '/auth/register' && method === 'POST') {
+        const users = getOfflineUsers();
+        if (users.find(u => u.email === body.email)) {
+            throw new Error('Bu email zaten kayıtlı');
+        }
+        const newUser = {
+            id: getNextUserId(),
+            name: body.name,
+            email: body.email,
+            password: body.password,
+            provider: 'email',
+            createdAt: new Date().toISOString()
+        };
+        users.push(newUser);
+        saveOfflineUsers(users);
+        const { password, ...safeUser } = newUser;
+        return { access_token: generateFakeToken(newUser.id), user: safeUser };
+    }
+    
+    if (endpoint === '/auth/oauth-demo' && method === 'POST') {
+        const users = getOfflineUsers();
+        let user = users.find(u => u.email === body.email);
+        if (!user) {
+            user = {
+                id: getNextUserId(),
+                name: body.name,
+                email: body.email,
+                password: null,
+                provider: body.provider,
+                createdAt: new Date().toISOString()
+            };
+            users.push(user);
+            saveOfflineUsers(users);
+        }
+        const { password, ...safeUser } = user;
+        return { access_token: generateFakeToken(user.id), user: safeUser };
+    }
+    
+    // POSTS ENDPOINTS
+    if (endpoint === '/posts' && method === 'GET') {
+        return getOfflinePosts();
+    }
+    
+    if (endpoint === '/posts' && method === 'POST') {
+        if (!state.user) throw new Error('Giriş yapmanız gerekiyor');
+        const posts = getOfflinePosts();
+        const slug = generateSlug(body.title);
+        const words = (body.content || '').replace(/<[^>]*>/g, '').split(/\s+/).filter(Boolean).length;
+        const newPost = {
+            id: getNextPostId(),
+            title: body.title,
+            slug: slug + '-' + Date.now(),
+            excerpt: body.excerpt || body.content.replace(/<[^>]*>/g, '').substring(0, 150) + '...',
+            content: body.content,
+            tags: (body.tags || []).map((t, i) => ({ id: i + 1, name: t })),
+            author: { id: state.user.id, name: state.user.name, email: state.user.email },
+            author_id: state.user.id,
+            featured: false,
+            read_time: Math.max(1, Math.ceil(words / 200)) + ' dk',
+            created_at: new Date().toISOString()
+        };
+        posts.unshift(newPost);
+        saveOfflinePosts(posts);
+        return newPost;
+    }
+    
+    // Single post GET
+    const postMatch = endpoint.match(/^\/posts\/([^/]+)$/);
+    if (postMatch && method === 'GET') {
+        const slug = postMatch[1];
+        const posts = getOfflinePosts();
+        const post = posts.find(p => p.slug === slug);
+        if (!post) throw new Error('Yazı bulunamadı');
+        return post;
+    }
+    
+    // Single post PUT (update)
+    if (postMatch && method === 'PUT') {
+        if (!state.user) throw new Error('Giriş yapmanız gerekiyor');
+        const slug = postMatch[1];
+        const posts = getOfflinePosts();
+        const idx = posts.findIndex(p => p.slug === slug);
+        if (idx === -1) throw new Error('Yazı bulunamadı');
+        if (posts[idx].author_id !== state.user.id) throw new Error('Bu yazıyı düzenleme yetkiniz yok');
+        
+        const words = (body.content || '').replace(/<[^>]*>/g, '').split(/\s+/).filter(Boolean).length;
+        posts[idx] = {
+            ...posts[idx],
+            title: body.title,
+            excerpt: body.excerpt || body.content.replace(/<[^>]*>/g, '').substring(0, 150) + '...',
+            content: body.content,
+            tags: (body.tags || []).map((t, i) => ({ id: i + 1, name: t })),
+            read_time: Math.max(1, Math.ceil(words / 200)) + ' dk',
+            updated_at: new Date().toISOString()
+        };
+        saveOfflinePosts(posts);
+        return posts[idx];
+    }
+    
+    // Single post DELETE
+    if (postMatch && method === 'DELETE') {
+        if (!state.user) throw new Error('Giriş yapmanız gerekiyor');
+        const slug = postMatch[1];
+        const posts = getOfflinePosts();
+        const idx = posts.findIndex(p => p.slug === slug);
+        if (idx === -1) throw new Error('Yazı bulunamadı');
+        if (posts[idx].author_id !== state.user.id) throw new Error('Bu yazıyı silme yetkiniz yok');
+        
+        posts.splice(idx, 1);
+        saveOfflinePosts(posts);
+        return null;
+    }
+    
+    throw new Error('Endpoint bulunamadı: ' + endpoint);
 }
 
 // ============ Auth Functions ============
@@ -1131,8 +1418,30 @@ window.addEventListener('click', (e) => {
 // Apply saved theme immediately
 applyTheme(state.theme);
 
-// Initial render
-render();
+// Initialize app with backend detection
+async function initApp() {
+    // Show loading state
+    const app = document.getElementById('app');
+    app.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;"><p>Yükleniyor...</p></div>';
+    
+    // Check if backend is available
+    const backendAvailable = await checkBackendAvailable();
+    state.isOfflineMode = !backendAvailable;
+    
+    // Initialize offline storage if needed
+    if (state.isOfflineMode) {
+        initOfflineStorage();
+        console.log('📴 Offline Mode: LocalStorage kullanılıyor');
+    } else {
+        console.log('🌐 Online Mode: API kullanılıyor');
+    }
+    
+    // Initial render
+    render();
+}
+
+// Start the app
+initApp();
 
 // ============ Expose Functions to Global Scope ============
 // Required because inline onclick handlers need global access

@@ -2,16 +2,53 @@
 
 Modern, minimalist blog uygulaması. FastAPI + Vanilla JS SPA.
 
+## 🌐 Demo
+
+**GitHub Pages:** [https://USERNAME.github.io/blog-app-python](https://USERNAME.github.io/blog-app-python)
+
+> GitHub Pages'de localStorage ile çalışır (demo mode). VPS'de gerçek veritabanı kullanır.
+
 ## Özellikler
 
 - 🎨 5 tema desteği (Light, Dark, Rose, Ocean, Forest)
 - 🔐 JWT tabanlı authentication
-- 📝 Markdown destekli blog yazıları
+- 📝 Rich Text Editor (WYSIWYG)
 - 🚀 Production-ready (Gunicorn + Uvicorn)
 - 🐳 Docker desteği
 - ☁️ VPS deployment scriptleri (Oracle Cloud, Cloudflare Tunnel)
+- 📴 **Dual-Mode:** Backend olmadan da çalışır (GitHub Pages, Netlify, Vercel)
 
-## Hızlı Başlangıç
+## Deployment Seçenekleri
+
+### 1. GitHub Pages (Statik - Demo Mode)
+
+Backend gerektirmez, localStorage kullanır:
+
+```bash
+# GitHub repo oluştur ve push et
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/USERNAME/blog-app-python.git
+git push -u origin main
+
+# GitHub Settings > Pages > Source: main branch
+```
+
+### 2. Netlify / Vercel (Statik - Demo Mode)
+
+1. GitHub'a push et
+2. Netlify/Vercel'de repo'yu bağla
+3. Build command: (boş bırak)
+4. Publish directory: `.` (root)
+
+### 3. VPS (Full Mode - Gerçek Veritabanı)
+
+Aşağıdaki "Production Deployment" bölümüne bak.
+
+---
+
+## Hızlı Başlangıç (Local Development)
 
 ```bash
 # Virtual environment
