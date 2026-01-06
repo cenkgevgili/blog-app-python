@@ -1,0 +1,27 @@
+[Unit]
+Description=Blog App FastAPI Service
+After=network.target
+
+[Service]
+Type=exec
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/blog-app
+Environment="PATH=/opt/blog-app/venv/bin"
+EnvironmentFile=/opt/blog-app/.env
+ExecStart=/opt/blog-app/venv/bin/gunicorn -c gunicorn.conf.py app.main:app
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/blog-app/data
+
+[Install]
+WantedBy=multi-user.target
