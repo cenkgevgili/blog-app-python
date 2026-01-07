@@ -741,7 +741,7 @@ function HomePage() {
                 </div>
             </section>
         </main>
-        <footer class="footer"><div class="container"><p>Minimalist tasarım ile oluşturuldu. © 2026</p></div></footer>
+        <footer class="footer"><div class="container"><p>Cenk Gevgili © 2026</p></div></footer>
     `;
 }
 
